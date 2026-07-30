@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SafeHer — With you, every step</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css">
+<!-- Firebase (Auth + Firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div id="app">
+  <div id="offline-banner">⚠️ No internet connection — SOS alerts may not send until you're back online</div>
+
+
+  <!-- ===================== LANDING ===================== -->
+  <section class="screen active" id="screen-landing">
+    <div class="topbar">
+      <div class="brand"><div class="brand-mark"></div><div class="brand-name">SafeHer</div></div>
+    </div>
+    <div class="landing-hero">
+      <div class="eyebrow">Women's Safety Platform</div>
+      <h1 class="landing-title">With you,<br><span class="accent">every step</span> home.</h1>
+      <p class="landing-sub">One tap alerts your trusted circle with your live location — even on a weak network. Built for the walk, the cab, the late shift.</p>
+
+      <div class="beacon-radar">
+        <div class="radar-ring r3"></div>
+        <div class="radar-ring r2"></div>
+        <div class="radar-ring r1"></div>
+        <div class="radar-core">🛡️</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-chip"><b>&lt;3s</b><span>Alert dispatch time</span></div>
+        <div class="stat-chip"><b>SMS</b><span>Works without data</span></div>
+        <div class="stat-chip"><b>24/7</b><span>Guardian network</span></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="go('screen-signup')">Get started</button>
+      <button class="btn btn-ghost" onclick="go('screen-login')">I already have an account</button>
+    </div>
+  </section>
+
+  <!-- ===================== SIGNUP ===================== -->
+  <section class="screen" id="screen-signup">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-landing')">←</button></div>
+    <div class="auth-wrap">
+      <h2 class="auth-title">Create your account</h2>
+      <p class="auth-sub">Takes under a minute. Your info stays private.</p>
+      <div class="field"><label>Full name</label><input type="text" placeholder="Priya Sharma" id="su-name"></div>
+      <div class="field"><label>Phone number</label><input type="tel" placeholder="+91 98765 43210" id="su-phone"></div>
+      <div class="field"><label>Email</label><input type="email" placeholder="priya@example.com" id="su-email"></div>
+      <div class="field"><label>Password</label><input type="password" placeholder="••••••••" id="su-password"></div>
+
+      <div class="field" style="margin-top:6px;">
+        <label>Trusted contacts (add 3–4)</label>
+        <div class="contact-row"><input type="text" placeholder="Name" value="Mom"><input type="tel" placeholder="Phone number" value="+91 98xxxxxx11"></div>
+        <div class="contact-row"><input type="text" placeholder="Name" value="Rhea (Roommate)"><input type="tel" placeholder="Phone number" value="+91 98xxxxxx22"></div>
+      </div>
+      <button class="add-contact-btn" onclick="addContactRow()">+ Add another contact</button>
+
+      <div id="su-error" style="color:var(--danger);font-size:12.5px;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-primary" id="su-submit-btn" onclick="signupUser()">Create account</button>
+      <div class="switch-link">Already have an account? <b onclick="go('screen-login')">Log in</b></div>
+    </div>
+  </section>
+
+  <!-- ===================== LOGIN ===================== -->
+  <section class="screen" id="screen-login">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-landing')">←</button></div>
+    <div class="auth-wrap">
+      <h2 class="auth-title">Welcome back</h2>
+      <p class="auth-sub">Log in to your safety dashboard.</p>
+      <div class="field"><label>Email</label><input type="email" placeholder="priya@example.com" id="li-email"></div>
+      <div class="field"><label>Password</label><input type="password" placeholder="••••••••" id="li-password"></div>
+      <div id="li-error" style="color:var(--danger);font-size:12.5px;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-primary" id="li-submit-btn" onclick="loginUser()">Log in</button>
+      <div class="switch-link">New here? <b onclick="go('screen-signup')">Create an account</b></div>
+    </div>
+  </section>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section class="screen" id="screen-dashboard">
+    <div class="topbar">
+      <div class="brand"><div class="brand-mark"></div><div class="brand-name">SafeHer</div></div>
+      <button class="back-btn" onclick="fakeExit()" title="Quick exit">⇥</button>
+    </div>
+    <div class="dash-body">
+      <div class="greet">Hey Priya 👋</div>
+      <div class="greet-sub">Tuesday, 9:42 PM · You're all set</div>
+
+      <div class="sos-wrap">
+        <button class="sos-btn" onclick="triggerSOS()">SOS<span>PRESS &amp; HOLD</span></button>
+        <div class="sos-hint">Sends your live location + an AI-drafted alert to your trusted contacts instantly.</div>
+      </div>
+
+      <div class="quick-grid">
+        <div class="quick-card" onclick="go('screen-journey')" style="cursor:pointer">
+          <div class="qi">🧭</div><b>Start Journey</b><small>Pick a safest route</small>
+        </div>
+        <div class="quick-card" onclick="go('screen-nearby')" style="cursor:pointer">
+          <div class="qi">📍</div><b>Nearby Help</b><small>Police &amp; hospitals</small>
+        </div>
+        <div class="quick-card" onclick="triggerFakeCall()" style="cursor:pointer">
+          <div class="qi">📞</div><b>Fake Call</b><small>Simulate an incoming call</small>
+        </div>
+        <div class="quick-card" id="voice-sos-card" onclick="toggleVoiceSOS()" style="cursor:pointer">
+          <div class="qi">🎙️</div><b id="voice-sos-label">Voice SOS: Off</b><small>Say a safe word to alert</small>
+        </div>
+      </div>
+
+      <div class="section-label">Emergency helplines</div>
+      <div class="helpline-row">
+        <div class="helpline-chip"><b>112</b><span>All Emergency</span></div>
+        <div class="helpline-chip"><b>1091</b><span>Women Helpline</span></div>
+        <div class="helpline-chip"><b>181</b><span>Women Helpline</span></div>
+      </div>
+
+      <div class="section-label">Your trusted circle</div>
+      <div class="contact-sent"><div class="av">M</div><div><b>Mom</b><span>Active &amp; reachable</span></div></div>
+      <div class="contact-sent"><div class="av">R</div><div><b>Rhea (Roommate)</b><span>Active &amp; reachable</span></div></div>
+    </div>
+
+    <button class="chat-fab" onclick="openChat()">💬</button>
+
+    <div class="bottom-nav">
+      <div class="nav-item active"><div class="ni">🏠</div>Home</div>
+      <div class="nav-item" onclick="go('screen-journey')"><div class="ni">🧭</div>Journey</div>
+      <div class="nav-item" onclick="go('screen-nearby')"><div class="ni">📍</div>Nearby</div>
+      <div class="nav-item" onclick="go('screen-report')"><div class="ni">📄</div>Reports</div>
+    </div>
+
+    <!-- Chat panel -->
+    <div class="chat-panel" id="chat-panel">
+      <div class="topbar"><button class="back-btn" onclick="closeChat()">←</button><div class="brand-name">Safety Assistant</div><div style="width:34px"></div></div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="bubble bot" id="chat-greeting">Hi there, I'm here with you. Are you feeling unsafe right now, or just checking in?</div>
+      </div>
+      <div class="chat-quick">
+        <button class="chip-btn" onclick="chatQuick('I feel unsafe')">I feel unsafe</button>
+        <button class="chip-btn" onclick="chatQuick('Someone is following me')">Someone is following me</button>
+        <button class="chip-btn" onclick="chatQuick('Just checking in')">Just checking in</button>
+      </div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Type a message...">
+        <button class="chat-send" onclick="chatSendTyped()">➤</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== JOURNEY ===================== -->
+  <section class="screen" id="screen-journey">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-dashboard')">←</button><div class="brand-name">Start Journey</div><div style="width:34px"></div></div>
+    <div class="journey-body">
+      <div class="field" style="position:relative;">
+        <label>From</label>
+        <input type="text" id="journey-from" placeholder="e.g. Connaught Place, Delhi" autocomplete="off">
+        <div id="from-suggestions" class="suggestions-list"></div>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:9px;font-size:12.5px;" onclick="useCurrentLocationForFrom()">📍 Use my current location</button>
+      </div>
+      <div class="field" style="position:relative;">
+        <label>To</label>
+        <input type="text" id="journey-to" placeholder="e.g. Rajouri Garden, Delhi" autocomplete="off">
+        <div id="to-suggestions" class="suggestions-list"></div>
+      </div>
+      <div class="field"><label>Expected arrival (in minutes)</label><input type="number" id="journey-minutes" value="30" min="1"></div>
+
+      <button class="btn btn-ghost" onclick="findRoutes()" id="find-routes-btn">Find safest routes</button>
+
+      <div class="section-label" id="routes-label" style="display:none;">Choose your route</div>
+      <div id="route-cards"></div>
+
+      <div id="map"></div>
+
+      <button class="btn btn-primary" onclick="startJourney()" id="start-journey-btn" disabled>Find a route first</button>
+    </div>
+  </section>
+
+  <!-- ===================== NEARBY ===================== -->
+  <section class="screen" id="screen-nearby">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-dashboard')">←</button><div class="brand-name">Nearby Help</div><div style="width:34px"></div></div>
+    <div class="journey-body">
+      <div class="field" style="position:relative;">
+        <label>Search a location (or use your current location)</label>
+        <div class="contact-row">
+          <input type="text" id="nearby-location-input" placeholder="e.g. Rajouri Garden, Delhi" autocomplete="off">
+          <button class="btn btn-ghost" style="width:auto;white-space:nowrap;margin-top:0;padding:13px 16px;" onclick="searchNearbyAt()">Search</button>
+        </div>
+        <div id="nearby-suggestions" class="suggestions-list"></div>
+        <button class="btn btn-ghost" style="margin-top:8px;" onclick="useLiveLocationNearby()">📍 Use my current location</button>
+      </div>
+      <div id="nearby-location-status" style="font-size:12.5px;color:var(--ink-500);margin:-6px 0 14px;">📍 Showing results near your current location</div>
+      <div id="map2" style="width:100%;height:180px;border-radius:14px;margin-bottom:16px;"></div>
+      <div class="section-label">Police stations</div>
+      <div id="nearby-police"><div class="contact-sent"><div class="av">🚓</div><div><b>Loading…</b><span>Searching nearby</span></div></div></div>
+      <div class="section-label">Hospitals</div>
+      <div id="nearby-hospitals"><div class="contact-sent"><div class="av">🏥</div><div><b>Loading…</b><span>Searching nearby</span></div></div></div>
+    </div>
+  </section>
+
+  <!-- ===================== REPORTS ===================== -->
+  <section class="screen" id="screen-report">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-dashboard')">←</button><div class="brand-name">Reports &amp; History</div><div style="width:34px"></div></div>
+    <div class="journey-body">
+      <div class="section-label">Past journeys</div>
+      <div class="contact-sent"><div class="av">✅</div><div><b>CP → Rajouri Garden</b><span>Completed safely · Mon, 8:10 PM</span></div></div>
+      <div class="contact-sent"><div class="av">✅</div><div><b>Office → Home</b><span>Completed safely · Sun, 7:20 PM</span></div></div>
+      <div class="section-label">Alerts sent</div>
+      <div class="contact-sent"><div class="av">🚨</div><div><b>SOS Demo Alert</b><span>Resolved · Today, 9:44 PM</span></div></div>
+    </div>
+  </section>
+
+  <!-- ===================== SOS TRIGGERED ===================== -->
+  <section class="screen" id="screen-sos">
+    <div class="topbar"><button class="back-btn" onclick="go('screen-dashboard')">←</button><div class="brand-name">Alert Active</div><div style="width:34px"></div></div>
+    <div class="journey-body">
+      <div class="sos-live-badge"><div class="rec-dot"></div> Live location sharing + recording active</div>
+
+      <div class="section-label">AI-generated alert sent</div>
+      <div class="msg-preview" id="ai-msg-preview">Generating message…</div>
+      <div id="sos-fail-warning" style="display:none;background:rgba(226,85,79,.12);border:1px solid rgba(226,85,79,.4);padding:14px;border-radius:9px;margin-bottom:16px;">
+        <b style="color:var(--danger);display:block;margin-bottom:6px;">⚠️ Alert could not be sent over the internet</b>
+        <p style="font-size:13px;color:var(--ink-300);margin:0 0 10px;">No connection reached your safety network — but SMS doesn't need internet. Tap below to send via your phone's own SMS app (uses normal mobile signal):</p>
+        <div id="sos-fallback-sms-buttons"></div>
+        <a id="sos-fallback-call" href="tel:112" class="btn btn-primary" style="padding:10px;font-size:13px;background:var(--danger);display:block;text-align:center;margin-top:8px;">📞 Call 112 now</a>
+        <button class="btn btn-ghost" style="padding:10px;font-size:13px;margin-top:8px;" onclick="retrySOS()">🔄 Retry sending over internet</button>
+      </div>
+
+      <div id="map3" style="width:100%;height:170px;border-radius:14px;margin-bottom:16px;"></div>
+
+      <div class="section-label">Sent to</div>
+      <div class="contact-sent"><div class="av">M</div><div><b>Mom</b><span>Delivered · SMS</span></div></div>
+      <div class="contact-sent"><div class="av">R</div><div><b>Rhea (Roommate)</b><span>Delivered · SMS</span></div></div>
+
+      <div class="section-label">Nearest help</div>
+      <div id="sos-nearest-help"><div class="contact-sent"><div class="av">🚓</div><div><b>Loading…</b><span>Searching nearby</span></div></div></div>
+
+      <button class="btn btn-primary" style="margin-top:18px;background:var(--safe);color:#fff;box-shadow:0 6px 18px rgba(76,175,130,.3)" onclick="resolveSOS()">I'm safe now — end alert</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Missed check-in modal -->
+<div class="checkin-modal" id="checkin-modal">
+  <div class="checkin-card">
+    <h3>Are you safe?</h3>
+    <p>You were expected to check in a few minutes ago. Let us know you're okay, or we'll alert your contacts automatically.</p>
+    <button class="btn btn-primary" onclick="confirmSafe()">✓ I'm safe</button>
+    <button class="btn btn-ghost" onclick="triggerSOS()">Send SOS now</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Fake exit overlay -->
+<div class="fake-exit" id="fake-exit">
+  <div class="fake-top">Weather</div>
+  <div class="fake-body">
+    <div style="font-size:13px;color:#667;">New Delhi, IN</div>
+    <div class="fake-temp">27°</div>
+    <div style="color:#556;font-size:14px;margin-bottom:6px;">Partly cloudy · Feels like 29°</div>
+    <div class="fake-row"><span>Tomorrow</span><span>31° / 22°</span></div>
+    <div class="fake-row"><span>Wednesday</span><span>30° / 21°</span></div>
+    <div class="fake-row"><span>Thursday</span><span>29° / 20°</span></div>
+    <div class="fake-row"><span>Friday</span><span>32° / 23°</span></div>
+  </div>
+  <button class="fake-return" onclick="closeFakeExit()">•••</button>
+</div>
+
+<!-- Fake Incoming Call overlay -->
+<div class="fake-call" id="fake-call">
+  <div class="fake-call-top">
+    <div class="fake-call-label">Incoming call</div>
+    <div class="fake-call-avatar">👩</div>
+    <div class="fake-call-name">Mom</div>
+    <div class="fake-call-sub">mobile</div>
+  </div>
+  <div class="fake-call-actions">
+    <button class="fake-call-btn decline" onclick="endFakeCall()">
+      <span>✕</span>
+      <small>Decline</small>
+    </button>
+    <button class="fake-call-btn accept" onclick="acceptFakeCall()">
+      <span>📞</span>
+      <small>Accept</small>
+    </button>
+  </div>
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
