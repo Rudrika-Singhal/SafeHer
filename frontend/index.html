@@ -60,8 +60,8 @@
 
       <div class="field" style="margin-top:6px;">
         <label>Trusted contacts (add 3–4)</label>
-        <div class="contact-row"><input type="text" placeholder="Name" value="Mom"><input type="tel" placeholder="Phone number" value="+91 98xxxxxx11"></div>
-        <div class="contact-row"><input type="text" placeholder="Name" value="Rhea (Roommate)"><input type="tel" placeholder="Phone number" value="+91 98xxxxxx22"></div>
+        <div class="contact-row"><input type="text" placeholder="Name (e.g. Mom)"><input type="tel" placeholder="Phone number (e.g. +91 98765xxxxx)"></div>
+        <div class="contact-row"><input type="text" placeholder="Name (e.g. Best friend)"><input type="tel" placeholder="Phone number"></div>
       </div>
       <button class="add-contact-btn" onclick="addContactRow()">+ Add another contact</button>
 
@@ -93,7 +93,7 @@
     </div>
     <div class="dash-body">
       <div class="greet">Hey Priya 👋</div>
-      <div class="greet-sub">Tuesday, 9:42 PM · You're all set</div>
+      <div class="greet-sub" id="greet-sub">Loading…</div>
 
       <div class="sos-wrap">
         <button class="sos-btn" onclick="triggerSOS()">SOS<span>PRESS &amp; HOLD</span></button>
@@ -123,8 +123,7 @@
       </div>
 
       <div class="section-label">Your trusted circle</div>
-      <div class="contact-sent"><div class="av">M</div><div><b>Mom</b><span>Active &amp; reachable</span></div></div>
-      <div class="contact-sent"><div class="av">R</div><div><b>Rhea (Roommate)</b><span>Active &amp; reachable</span></div></div>
+      <div id="trusted-circle-list"><div class="contact-sent"><div class="av">…</div><div><b>Loading…</b><span></span></div></div></div>
     </div>
 
     <button class="chat-fab" onclick="openChat()">💬</button>
@@ -235,8 +234,7 @@
       <div id="map3" style="width:100%;height:170px;border-radius:14px;margin-bottom:16px;"></div>
 
       <div class="section-label">Sent to</div>
-      <div class="contact-sent"><div class="av">M</div><div><b>Mom</b><span>Delivered · SMS</span></div></div>
-      <div class="contact-sent"><div class="av">R</div><div><b>Rhea (Roommate)</b><span>Delivered · SMS</span></div></div>
+      <div id="sos-sent-to"></div>
 
       <div class="section-label">Nearest help</div>
       <div id="sos-nearest-help"><div class="contact-sent"><div class="av">🚓</div><div><b>Loading…</b><span>Searching nearby</span></div></div></div>

@@ -26,6 +26,28 @@ const BACKEND_URL = "http://localhost:5000";
 // Currently logged-in user's data (filled after signup/login)
 let currentUser = { name: 'Priya', phone: '', contacts: [] };
 
+// Real usage history — starts empty, fills up as the user actually uses the app (no fake demo data)
+let journeyHistory = [];
+let alertHistory = [];
+let currentAlertEntry = null;
+
+function renderReportHistory(){
+  const jWrap = document.getElementById('report-journeys');
+  const aWrap = document.getElementById('report-alerts');
+  if(!jWrap || !aWrap) return;
+
+  jWrap.innerHTML = journeyHistory.length
+    ? [...journeyHistory].reverse().map(j=>`
+        <div class="contact-sent"><div class="av">${j.status==='Completed safely' ? '✅' : j.status==='Alert triggered' ? '🚨' : '🧭'}</div>
+        <div><b>${j.from} → ${j.to}</b><span>${j.status} · ${j.time}</span></div></div>`).join('')
+    : `<div class="contact-sent"><div class="av">🧭</div><div><b>No journeys yet</b><span>Start a journey to see it logged here</span></div></div>`;
+
+  aWrap.innerHTML = alertHistory.length
+    ? [...alertHistory].reverse().map(a=>`
+        <div class="contact-sent"><div class="av">🚨</div><div><b>${a.label}</b><span>${a.status} · ${a.time}</span></div></div>`).join('')
+    : `<div class="contact-sent"><div class="av">🔔</div><div><b>No alerts yet</b><span>SOS alerts you trigger will show up here</span></div></div>`;
+}
+
 // =====================================================================
 // REAL GPS LOCATION + READABLE ADDRESS
 // =====================================================================
@@ -84,6 +106,31 @@ function updateDashboardGreeting(){
   const firstName = (currentUser.name || 'there').split(' ')[0];
   const el = document.querySelector('.greet');
   if(el) el.textContent = `Hey ${firstName} 👋`;
+
+  const subEl = document.getElementById('greet-sub');
+  if(subEl){
+    const now = new Date();
+    const dayName = now.toLocaleDateString([], { weekday:'long' });
+    const time = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    subEl.textContent = `${dayName}, ${time} · You're all set`;
+  }
+
+  renderTrustedCircle();
+}
+
+// Renders whatever contacts the logged-in user actually entered — no hardcoded names
+function renderTrustedCircle(){
+  const wrap = document.getElementById('trusted-circle-list');
+  if(!wrap) return;
+  const contacts = currentUser.contacts || [];
+  if(!contacts.length){
+    wrap.innerHTML = `<div class="contact-sent"><div class="av">＋</div><div><b>No contacts added yet</b><span>Add trusted contacts in your profile</span></div></div>`;
+    return;
+  }
+  wrap.innerHTML = contacts.map(c=>{
+    const initial = (c.name||'?').trim().charAt(0).toUpperCase();
+    return `<div class="contact-sent"><div class="av">${initial}</div><div><b>${c.name}</b><span>Active &amp; reachable</span></div></div>`;
+  }).join('');
 }
 
 async function signupUser(){
@@ -117,7 +164,9 @@ async function signupUser(){
   btn.textContent='Creating account...'; btn.disabled=true;
   try{
     const cred = await auth.createUserWithEmailAndPassword(email, password);
+    currentUser.uid = cred.user.uid;
     await db.collection('users').doc(cred.user.uid).set({ name, phone, email, contacts });
+    journeyHistory = []; alertHistory = []; // fresh account, fresh history
     toast(`Welcome to SafeHer, ${name}`);
     updateDashboardGreeting();
     go('screen-dashboard');
@@ -148,8 +197,14 @@ async function loginUser(){
   btn.textContent='Logging in...'; btn.disabled=true;
   try{
     const cred = await auth.signInWithEmailAndPassword(email, password);
+    currentUser.uid = cred.user.uid;
     const doc = await db.collection('users').doc(cred.user.uid).get();
-    if(doc.exists) currentUser = doc.data();
+    if(doc.exists){
+      const data = doc.data();
+      currentUser = { ...data, uid: cred.user.uid };
+      journeyHistory = data.journeyHistory || [];
+      alertHistory = data.alertHistory || [];
+    }
     toast('Logged in');
     updateDashboardGreeting();
     go('screen-dashboard');
@@ -157,6 +212,16 @@ async function loginUser(){
     showAuthError('li-error', err.message);
   }finally{
     btn.textContent='Log in'; btn.disabled=false;
+  }
+}
+
+// Saves journey/alert history to this user's Firestore document so it survives reloads/logins
+async function saveHistoryToFirestore(){
+  if(!firebaseReady || !currentUser.uid) return;
+  try{
+    await db.collection('users').doc(currentUser.uid).update({ journeyHistory, alertHistory });
+  }catch(err){
+    console.warn('Could not save history to Firestore:', err.message);
   }
 }
 
@@ -168,6 +233,8 @@ function go(id){
   document.getElementById(id).classList.add('active');
   if(id==='screen-journey') setTimeout(initMap,150);
   if(id==='screen-nearby') setTimeout(initMap2,150);
+  if(id==='screen-dashboard') updateDashboardGreeting();
+  if(id==='screen-report') renderReportHistory();
 }
 
 function toast(msg){
@@ -559,12 +626,20 @@ function drawRoutesOnMap(){
 // =====================================================================
 // REAL MISSED CHECK-IN
 // =====================================================================
+let currentJourneyEntry = null;
+
 function startJourney(){
   if(!foundRoutes.length){ toast('Find a route first'); return; }
   const minutes = parseFloat(document.getElementById('journey-minutes').value) || 30;
+  const fromText = document.getElementById('journey-from').value.trim() || 'Start';
+  const toText = document.getElementById('journey-to').value.trim() || 'Destination';
 
   toast(`Journey started — check-in in ${minutes} min`);
   go('screen-dashboard');
+
+  currentJourneyEntry = { from: fromText, to: toText, status: 'In progress', time: new Date().toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit'}) };
+  journeyHistory.push(currentJourneyEntry);
+  saveHistoryToFirestore();
 
   clearTimeout(checkinTimer); clearTimeout(checkinReminderTimer); clearTimeout(checkinFinalTimer);
 
@@ -583,6 +658,9 @@ function startJourney(){
     checkinFinalTimer = setTimeout(()=>{
       if(document.getElementById('checkin-modal').classList.contains('active')){
         document.getElementById('checkin-modal').classList.remove('active');
+        if(currentJourneyEntry) currentJourneyEntry.status = 'Alert triggered';
+        saveHistoryToFirestore();
+        renderReportHistory();
         triggerSOS('missed_checkin');
       }
     }, 5*60*1000);
@@ -594,6 +672,7 @@ function confirmSafe(){
   clearTimeout(checkinReminderTimer); clearTimeout(checkinFinalTimer);
   document.getElementById('checkin-modal').classList.remove('active');
   toast("Great — glad you're safe!");
+  if(currentJourneyEntry){ currentJourneyEntry.status = 'Completed safely'; currentJourneyEntry = null; renderReportHistory(); saveHistoryToFirestore(); }
 }
 
 // =====================================================================
@@ -611,6 +690,21 @@ function triggerSOS(kind){
   go('screen-sos');
   setTimeout(initMap3,150);
   document.getElementById('sos-fail-warning').style.display = 'none';
+
+  const kindLabels = { unsafe:'Felt unsafe', followed:'Being followed', missed_checkin:'Missed check-in alert', voice:'Voice-triggered SOS' };
+  currentAlertEntry = { label: kindLabels[kind] || 'SOS Alert', status: 'Active', time: new Date().toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit'}) };
+  alertHistory.push(currentAlertEntry);
+  saveHistoryToFirestore();
+  renderReportHistory();
+
+  const contacts = currentUser.contacts || [];
+  const sentToWrap = document.getElementById('sos-sent-to');
+  sentToWrap.innerHTML = contacts.length
+    ? contacts.map(c=>{
+        const initial = (c.name||'?').trim().charAt(0).toUpperCase();
+        return `<div class="contact-sent"><div class="av">${initial}</div><div><b>${c.name}</b><span>Sending…</span></div></div>`;
+      }).join('')
+    : `<div class="contact-sent"><div class="av">⚠️</div><div><b>No trusted contacts saved</b><span>Add contacts in your profile</span></div></div>`;
 
   const name = currentUser.name || 'Priya';
   const loc = currentLocation.label;
@@ -649,9 +743,11 @@ function triggerSOS(kind){
   .then(data=>{
     console.log('SMS result:', data);
     lastFailedSOSKind = null; // success — clear any pending retry
+    document.querySelectorAll('#sos-sent-to .contact-sent span').forEach(s=> s.textContent = 'Delivered · SMS');
   })
   .catch(err=>{
     console.warn('SOS failed to reach the backend (likely no internet):', err.message);
+    document.querySelectorAll('#sos-sent-to .contact-sent span').forEach(s=> s.textContent = 'Not sent — no connection');
     handleSOSFailure(kind, name, loc, time);
   });
 }
@@ -699,6 +795,7 @@ window.addEventListener('offline', updateOfflineBanner);
 updateOfflineBanner();
 function resolveSOS(){
   toast('Alert closed — contacts notified you are safe');
+  if(currentAlertEntry){ currentAlertEntry.status = 'Resolved'; currentAlertEntry = null; saveHistoryToFirestore(); }
   go('screen-dashboard');
 }
 
