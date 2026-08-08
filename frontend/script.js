@@ -22,7 +22,6 @@
 
 // // // Where your backend (server.js) is running
 // // const BACKEND_URL = "http://localhost:5000";
-
 // // // Currently logged-in user's data (filled after signup/login)
 // // let currentUser = { name: 'Priya', phone: '', contacts: [] };
 
@@ -2042,7 +2041,7 @@ const auth = firebaseReady ? firebase.auth() : null;
 const db = firebaseReady ? firebase.firestore() : null;
 
 // Where your backend (server.js) is running
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = "http://safeher-g0qz.onrender.com";
 
 // Currently logged-in user's data (filled after signup/login)
 let currentUser = { name: 'Priya', phone: '', contacts: [] };
